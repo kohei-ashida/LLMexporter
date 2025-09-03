@@ -1,0 +1,319 @@
+.loading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 40px 20px;
+    text-align: center;
+}
+
+.loading-spinner {
+    width: 24px;
+    height: 24px;
+    border: 2px solid var(--vscode-progressBar-background);
+    border-top: 2px solid var(--vscode-progressBar-foreground);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-bottom: 16px;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.container {
+    padding: 16px 0;
+}
+
+.section {
+    margin-bottom: 24px;
+}
+
+.section-title {
+    font-size: 14px;
+    font-weight: 600;
+    margin-bottom: 12px;
+    color: var(--vscode-foreground);
+}
+
+.file-tree {
+    border: 1px solid var(--vscode-input-border);
+    border-radius: 4px;
+    max-height: 300px;
+    overflow-y: auto;
+    background: var(--vscode-input-background);
+}
+
+.tree-container {
+    position: relative;
+}
+
+.tree-node {
+    display: flex;
+    align-items: center;
+    padding: 4px 8px;
+    cursor: pointer;
+    user-select: none;
+    outline: none;
+    border-radius: 2px;
+    margin: 1px 0;
+}
+
+.tree-node:hover {
+    background: var(--vscode-list-hoverBackground);
+}
+
+.tree-node:focus {
+    background: var(--vscode-list-focusBackground);
+    outline: 1px solid var(--vscode-focusBorder);
+    outline-offset: -1px;
+}
+
+.tree-node[aria-selected="true"] {
+    background: var(--vscode-list-activeSelectionBackground);
+    color: var(--vscode-list-activeSelectionForeground);
+}
+
+.tree-node-indent {
+    flex-shrink: 0;
+}
+
+.tree-node-expander {
+    width: 16px;
+    height: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 10px;
+    color: var(--vscode-icon-foreground);
+    margin-right: 2px;
+    border-radius: 2px;
+}
+
+.tree-node-expander:hover {
+    background: var(--vscode-toolbar-hoverBackground);
+}
+
+.tree-node-expander-spacer {
+    width: 16px;
+    height: 16px;
+    margin-right: 2px;
+}
+
+.tree-node-icon {
+    width: 16px;
+    height: 16px;
+    margin-right: 6px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+}
+
+.tree-node-checkbox {
+    margin-right: 8px;
+    cursor: pointer;
+}
+
+.tree-node-label {
+    flex: 1;
+    font-size: 13px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    cursor: pointer;
+}
+
+.tree-node-size {
+    font-size: 11px;
+    color: var(--vscode-descriptionForeground);
+    margin-left: 8px;
+}
+
+.tree-node-children {
+    margin-left: 16px;
+}
+
+/* Virtual scrolling optimization */
+.file-tree {
+    border: 1px solid var(--vscode-input-border);
+    border-radius: 4px;
+    max-height: 400px;
+    overflow-y: auto;
+    background: var(--vscode-input-background);
+    contain: layout style paint;
+}
+
+/* Accessibility improvements */
+.tree-node[role="treeitem"] {
+    position: relative;
+}
+
+.tree-node[aria-expanded="true"] > .tree-node-expander::before {
+    content: "";
+    position: absolute;
+    left: 8px;
+    top: 16px;
+    bottom: -4px;
+    width: 1px;
+    background: var(--vscode-tree-indentGuidesStroke);
+    opacity: 0.4;
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+    .tree-node:focus {
+        outline: 2px solid;
+        outline-offset: -2px;
+    }
+    
+    .tree-node-expander {
+        border: 1px solid transparent;
+    }
+    
+    .tree-node-expander:hover {
+        border-color: currentColor;
+    }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+    .progress-fill {
+        transition: none;
+    }
+    
+    .loading-spinner {
+        animation: none;
+        border-top-color: transparent;
+    }
+}
+
+.config-section {
+    border: 1px solid var(--vscode-input-border);
+    border-radius: 4px;
+    padding: 16px;
+    background: var(--vscode-input-background);
+}
+
+.config-row {
+    display: flex;
+    align-items: center;
+    margin-bottom: 12px;
+}
+
+.config-row:last-child {
+    margin-bottom: 0;
+}
+
+.config-label {
+    min-width: 120px;
+    font-size: 13px;
+    color: var(--vscode-foreground);
+}
+
+.config-input {
+    flex: 1;
+    margin-left: 12px;
+}
+
+.config-input select,
+.config-input input[type="number"],
+.config-input textarea {
+    width: 100%;
+    padding: 4px 8px;
+    border: 1px solid var(--vscode-input-border);
+    background: var(--vscode-input-background);
+    color: var(--vscode-input-foreground);
+    border-radius: 2px;
+    font-family: var(--vscode-font-family);
+    font-size: 13px;
+}
+
+.config-input textarea {
+    resize: vertical;
+    min-height: 60px;
+}
+
+.config-summary {
+    margin-top: 12px;
+    padding: 8px;
+    background: var(--vscode-editor-background);
+    border-radius: 4px;
+    font-size: 12px;
+    color: var(--vscode-descriptionForeground);
+    border-left: 3px solid var(--vscode-progressBar-foreground);
+}
+
+.export-section {
+    text-align: center;
+}
+
+.export-button {
+    padding: 12px 24px;
+    font-size: 14px;
+    font-weight: 600;
+    min-width: 120px;
+}
+
+.export-button:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    background: var(--vscode-button-secondaryBackground);
+    color: var(--vscode-button-secondaryForeground);
+}
+
+.progress-section {
+    margin-top: 16px;
+    padding: 16px;
+    border: 1px solid var(--vscode-input-border);
+    border-radius: 4px;
+    background: var(--vscode-input-background);
+}
+
+.progress-bar {
+    width: 100%;
+    height: 8px;
+    background: var(--vscode-progressBar-background);
+    border-radius: 4px;
+    overflow: hidden;
+    margin-bottom: 8px;
+}
+
+.progress-fill {
+    height: 100%;
+    background: var(--vscode-progressBar-foreground);
+    transition: width 0.3s ease;
+}
+
+.progress-message {
+    font-size: 12px;
+    color: var(--vscode-descriptionForeground);
+    text-align: center;
+}
+
+.error-message {
+    padding: 12px;
+    border: 1px solid var(--vscode-inputValidation-errorBorder);
+    border-radius: 4px;
+    background: var(--vscode-inputValidation-errorBackground);
+    color: var(--vscode-errorForeground);
+    margin-bottom: 16px;
+}
+
+.no-workspace {
+    text-align: center;
+    padding: 40px 20px;
+    color: var(--vscode-descriptionForeground);
+}
+
+.selection-summary {
+    font-size: 12px;
+    color: var(--vscode-descriptionForeground);
+    margin-top: 8px;
+    padding: 8px;
+    background: var(--vscode-editor-background);
+    border-radius: 4px;
+}

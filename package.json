@@ -1,0 +1,231 @@
+{
+  "name": "vscode-llm-context-exporter",
+  "displayName": "LLM Context Exporter",
+  "description": "Export selected files and directory structures for sharing with LLMs",
+  "version": "0.0.1",
+  "engines": {
+    "vscode": "^1.74.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "onCommand:llmContextExporter.openExporter"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "llmContextExporter.openExporter",
+        "title": "Open LLM Context Exporter",
+        "category": "LLM Context",
+        "icon": "$(export)"
+      },
+      {
+        "command": "llmContextExporter.refresh",
+        "title": "Refresh",
+        "category": "LLM Context",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "llmContextExporter.addFile",
+        "title": "Add to LLM Context Export",
+        "category": "LLM Context"
+      },
+      {
+        "command": "llmContextExporter.addFolder",
+        "title": "Add Folder to LLM Context Export",
+        "category": "LLM Context"
+      },
+      {
+        "command": "llmContextExporter.selectAll",
+        "title": "Select All Files",
+        "category": "LLM Context"
+      },
+      {
+        "command": "llmContextExporter.deselectAll",
+        "title": "Deselect All Files",
+        "category": "LLM Context"
+      },
+      {
+        "command": "llmContextExporter.quickExport",
+        "title": "Quick Export Selected Files",
+        "category": "LLM Context"
+      }
+    ],
+    "keybindings": [
+      {
+        "command": "llmContextExporter.openExporter",
+        "key": "ctrl+shift+e",
+        "mac": "cmd+shift+e",
+        "when": "workspaceFolderCount > 0"
+      },
+      {
+        "command": "llmContextExporter.quickExport",
+        "key": "ctrl+shift+x",
+        "mac": "cmd+shift+x",
+        "when": "llmContextExporter.hasSelection"
+      },
+      {
+        "command": "llmContextExporter.selectAll",
+        "key": "ctrl+a",
+        "mac": "cmd+a",
+        "when": "focusedView == llmContextExporter.exporterView"
+      },
+      {
+        "command": "llmContextExporter.deselectAll",
+        "key": "ctrl+d",
+        "mac": "cmd+d",
+        "when": "focusedView == llmContextExporter.exporterView"
+      }
+    ],
+    "views": {
+      "explorer": [
+        {
+          "type": "webview",
+          "id": "llmContextExporter.exporterView",
+          "name": "LLM Context Exporter",
+          "when": "workspaceFolderCount > 0"
+        }
+      ]
+    },
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "llmContextExporter",
+          "title": "LLM Context Exporter",
+          "icon": "$(export)"
+        }
+      ]
+    },
+    "menus": {
+      "explorer/context": [
+        {
+          "command": "llmContextExporter.addFile",
+          "when": "!explorerResourceIsFolder",
+          "group": "7_modification"
+        },
+        {
+          "command": "llmContextExporter.addFolder",
+          "when": "explorerResourceIsFolder",
+          "group": "7_modification"
+        }
+      ],
+      "commandPalette": [
+        {
+          "command": "llmContextExporter.openExporter"
+        },
+        {
+          "command": "llmContextExporter.refresh"
+        },
+        {
+          "command": "llmContextExporter.selectAll",
+          "when": "focusedView == llmContextExporter.exporterView"
+        },
+        {
+          "command": "llmContextExporter.deselectAll",
+          "when": "focusedView == llmContextExporter.exporterView"
+        },
+        {
+          "command": "llmContextExporter.quickExport",
+          "when": "llmContextExporter.hasSelection"
+        }
+      ],
+      "view/title": [
+        {
+          "command": "llmContextExporter.refresh",
+          "when": "view == llmContextExporter.exporterView",
+          "group": "navigation"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "LLM Context Exporter",
+      "properties": {
+        "llmContextExporter.logLevel": {
+          "type": "string",
+          "enum": ["debug", "info", "warn", "error"],
+          "default": "info",
+          "description": "Set the logging level for the extension"
+        },
+        "llmContextExporter.defaultFormat": {
+          "type": "string",
+          "enum": ["txt", "md"],
+          "default": "md",
+          "description": "Default export format"
+        },
+        "llmContextExporter.maxFileSize": {
+          "type": "number",
+          "default": 1024,
+          "minimum": 1,
+          "maximum": 10240,
+          "description": "Maximum file size in KB to include in export"
+        },
+        "llmContextExporter.includeDirectoryStructure": {
+          "type": "boolean",
+          "default": true,
+          "description": "Include directory structure in exports by default"
+        },
+        "llmContextExporter.excludePatterns": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": ["node_modules/**", ".git/**", "dist/**", "build/**", "*.log"],
+          "description": "Default patterns to exclude from file selection"
+        },
+        "llmContextExporter.includePatterns": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [],
+          "description": "Default patterns to include in file selection (empty means include all)"
+        },
+        "llmContextExporter.truncateThreshold": {
+          "type": "number",
+          "default": 10240,
+          "minimum": 1024,
+          "maximum": 102400,
+          "description": "Total export size threshold in KB before warning user"
+        },
+        "llmContextExporter.rememberSelections": {
+          "type": "boolean",
+          "default": true,
+          "description": "Remember file selections and configuration between sessions"
+        },
+        "llmContextExporter.defaultPreset": {
+          "type": "string",
+          "enum": ["", "minimal", "comprehensive", "documentation", "source-only"],
+          "default": "",
+          "description": "Default configuration preset to use"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "pretest": "npm run compile && npm run lint",
+    "lint": "eslint src --ext ts",
+    "test": "node ./out/test/runTest.js"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.74.0",
+    "@types/node": "16.x",
+    "@types/mocha": "^10.0.1",
+    "@types/glob": "^8.0.0",
+    "@typescript-eslint/eslint-plugin": "^5.45.0",
+    "@typescript-eslint/parser": "^5.45.0",
+    "eslint": "^8.28.0",
+    "glob": "^8.0.3",
+    "mocha": "^10.1.0",
+    "typescript": "^4.9.4",
+    "@vscode/test-electron": "^2.2.0"
+  },
+  "dependencies": {
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0"
+  }
+}
