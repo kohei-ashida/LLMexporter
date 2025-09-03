@@ -79,6 +79,7 @@ export const mockFileTreeNodes: FileTreeNode[] = [
 
 export const mockExportConfiguration: ExportConfiguration = {
     format: 'md',
+    outputMethod: 'file',
     includeDirectoryStructure: true,
     maxFileSize: 1024 * 1024, // 1MB
     excludePatterns: ['node_modules/**', '*.log'],

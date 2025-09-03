@@ -2,7 +2,7 @@
 
 ## Overview
 
-The VSCode LLM Context Exporter is an extension that provides a user-friendly interface for selecting and exporting project files and directory structures into a single, well-formatted attachment file. The extension uses VSCode's webview API to create an interactive tree interface and leverages the workspace API for file system operations.
+The VSCode LLM Context Exporter is an extension that provides a user-friendly interface for selecting and exporting project files and directory structures into a single, well-formatted output. Users can either save the content as an attachment file or copy it directly to the clipboard for immediate use. The extension uses VSCode's webview API to create an interactive tree interface and leverages the workspace API for file system operations.
 
 ## Architecture
 
@@ -53,11 +53,12 @@ Webview Process
   - `filterFiles()`: Apply user-defined filters
 
 ### 4. Export Service (`ExportService.ts`)
-- **Purpose**: Generate formatted output files
+- **Purpose**: Generate formatted output for files or clipboard
 - **Key Methods**:
   - `generateExport()`: Create consolidated output
   - `formatFileContent()`: Format individual files
   - `generateDirectoryStructure()`: Create tree overview
+  - `copyToClipboard()`: Copy formatted content to system clipboard
 
 ### 5. Webview UI Components
 - **FileTreeComponent**: Interactive tree with checkboxes
@@ -84,6 +85,7 @@ interface FileTreeNode {
 ```typescript
 interface ExportConfiguration {
   format: 'txt' | 'md';
+  outputMethod: 'file' | 'clipboard';
   includeDirectoryStructure: boolean;
   maxFileSize: number;
   excludePatterns: string[];
@@ -121,7 +123,8 @@ interface ExportResult {
 ### Export Generation Errors
 - **Memory Limits**: Implement streaming for large exports
 - **File Write Errors**: Provide alternative save locations
-- **Format Errors**: Validate output before saving
+- **Clipboard Errors**: Handle clipboard access failures with fallback to file export
+- **Format Errors**: Validate output before saving or copying
 
 ## Testing Strategy
 
@@ -130,6 +133,7 @@ interface ExportResult {
 - Export formatting functions
 - Filter application
 - Configuration validation
+- Clipboard operations and error handling
 
 ### Integration Tests
 - Webview communication flow
@@ -156,6 +160,7 @@ interface ExportResult {
 - Leverage `vscode.window.createWebviewPanel` for UI
 - Implement `vscode.commands.registerCommand` for commands
 - Use `vscode.workspace.getConfiguration` for settings
+- Use `vscode.env.clipboard.writeText()` for clipboard operations
 
 ### Security Considerations
 - Sanitize file paths to prevent directory traversal

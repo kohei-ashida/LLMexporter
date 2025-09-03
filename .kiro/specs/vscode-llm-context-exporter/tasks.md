@@ -27,6 +27,13 @@
   - Write unit tests for export formatting functions
   - _Requirements: 2.2, 2.3, 2.4, 3.4_
 
+- [x] 4.1 Add clipboard functionality to export service
+  - Implement copyToClipboard method using VSCode clipboard API
+  - Add clipboard error handling and fallback mechanisms
+  - Create visual confirmation for successful clipboard operations
+  - Write unit tests for clipboard functionality
+  - _Requirements: 2.6, 2.7_
+
 - [x] 5. Build webview provider and communication layer
   - Implement WebviewProvider class for managing webview lifecycle
   - Create message handling system between extension and webview
@@ -42,6 +49,13 @@
   - Add SettingsPanel for user preferences
   - _Requirements: 1.2, 1.3, 3.1, 3.2_
 
+- [x] 6.1 Update ExportPanel with clipboard output option
+  - Add radio buttons or toggle for file vs clipboard output selection
+  - Update export button behavior based on selected output method
+  - Add clipboard success/failure notification UI
+  - Update ExportPanel styling and layout for new options
+  - _Requirements: 3.2_
+
 - [x] 7. Implement extension main entry point and command registration
   - Create main extension.ts file with activation function
   - Register VSCode commands for opening the exporter panel
@@ -56,6 +70,13 @@
   - Create progress indicators for long-running operations
   - _Requirements: 1.4, 2.1, 2.5_
 
+- [x] 8.1 Integrate clipboard export workflow
+  - Update export workflow to handle clipboard output method
+  - Add clipboard operation to webview message handling
+  - Implement clipboard success/failure feedback to UI
+  - Update progress indicators for clipboard operations
+  - _Requirements: 2.6, 2.7_
+
 - [x] 9. Implement error handling and validation
   - Add comprehensive error handling for file system operations
   - Implement validation for user inputs and configurations
@@ -69,6 +90,13 @@
   - Add end-to-end tests for complete export workflow
   - Create test fixtures and mock data for various scenarios
   - _Requirements: 1.1, 2.1, 3.1, 4.1_
+
+- [x] 10.1 Add clipboard functionality tests
+  - Write unit tests for clipboard operations and error handling
+  - Add integration tests for clipboard export workflow
+  - Create mock clipboard API for testing environment
+  - Test clipboard failure scenarios and fallback behavior
+  - _Requirements: 2.6, 2.7_
 
 - [x] 11. Add configuration and settings management
   - Implement VSCode settings integration for user preferences

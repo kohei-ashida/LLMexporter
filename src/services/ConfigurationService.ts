@@ -21,6 +21,7 @@ export class ConfigurationService {
         
         const defaultConfig: Partial<ExportConfiguration> = {
             format: config.get<'txt' | 'md'>('defaultFormat', 'md'),
+            outputMethod: config.get<'file' | 'clipboard'>('defaultOutputMethod', 'file'),
             includeDirectoryStructure: config.get<boolean>('includeDirectoryStructure', true),
             maxFileSize: config.get<number>('maxFileSize', 1024) * 1024, // Convert KB to bytes
             excludePatterns: config.get<string[]>('excludePatterns', [
@@ -48,6 +49,7 @@ export class ConfigurationService {
     private getFallbackConfiguration(): ExportConfiguration {
         return {
             format: 'md',
+            outputMethod: 'file',
             includeDirectoryStructure: true,
             maxFileSize: 1024 * 1024, // 1MB
             excludePatterns: ['node_modules/**', '.git/**'],
@@ -63,6 +65,7 @@ export class ConfigurationService {
         return {
             'minimal': {
                 format: 'txt',
+                outputMethod: 'file',
                 includeDirectoryStructure: false,
                 maxFileSize: 512 * 1024, // 512KB
                 excludePatterns: [
@@ -81,6 +84,7 @@ export class ConfigurationService {
             },
             'comprehensive': {
                 format: 'md',
+                outputMethod: 'file',
                 includeDirectoryStructure: true,
                 maxFileSize: 2 * 1024 * 1024, // 2MB
                 excludePatterns: [
@@ -93,6 +97,7 @@ export class ConfigurationService {
             },
             'documentation': {
                 format: 'md',
+                outputMethod: 'file',
                 includeDirectoryStructure: true,
                 maxFileSize: 1024 * 1024, // 1MB
                 excludePatterns: [
@@ -108,6 +113,7 @@ export class ConfigurationService {
             },
             'source-only': {
                 format: 'md',
+                outputMethod: 'file',
                 includeDirectoryStructure: true,
                 maxFileSize: 1024 * 1024, // 1MB
                 excludePatterns: [
@@ -217,6 +223,12 @@ export class ConfigurationService {
             migrated.format = 'md';
         }
 
+        // Fix invalid outputMethod values
+        if (migrated.outputMethod && !['file', 'clipboard'].includes(migrated.outputMethod)) {
+            Logger.info(`Migrating invalid outputMethod '${migrated.outputMethod}' to 'file'`);
+            migrated.outputMethod = 'file';
+        }
+
         // Fix negative or zero values
         if (migrated.maxFileSize !== undefined && migrated.maxFileSize <= 0) {
             Logger.info(`Migrating invalid maxFileSize '${migrated.maxFileSize}' to default`);
@@ -281,6 +293,7 @@ export class ConfigurationService {
         
         const parts = [
             `Format: ${config.format.toUpperCase()}`,
+            `Output: ${config.outputMethod === 'clipboard' ? 'Clipboard' : 'File'}`,
             `Max file size: ${sizeInKB} KB`,
             `Truncate threshold: ${thresholdInMB} MB`,
             `Directory structure: ${config.includeDirectoryStructure ? 'Yes' : 'No'}`

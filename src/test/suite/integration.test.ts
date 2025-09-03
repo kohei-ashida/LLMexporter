@@ -52,6 +52,7 @@ suite('Integration Test Suite', () => {
     test('Should create export configuration with defaults', () => {
         const config: ExportConfiguration = {
             format: 'md',
+            outputMethod: 'file',
             includeDirectoryStructure: true,
             maxFileSize: 1024 * 1024,
             excludePatterns: [],
@@ -67,6 +68,7 @@ suite('Integration Test Suite', () => {
     test('Should handle empty file selection for export', async () => {
         const config: ExportConfiguration = {
             format: 'txt',
+            outputMethod: 'file',
             includeDirectoryStructure: false,
             maxFileSize: 1024 * 1024,
             excludePatterns: [],
@@ -87,6 +89,7 @@ suite('Integration Test Suite', () => {
     test('Should handle export progress callback', async () => {
         const config: ExportConfiguration = {
             format: 'md',
+            outputMethod: 'file',
             includeDirectoryStructure: true,
             maxFileSize: 1024 * 1024,
             excludePatterns: [],
@@ -108,5 +111,188 @@ suite('Integration Test Suite', () => {
         }
 
         assert.strictEqual(progressCalled, true);
+    });
+
+    suite('Clipboard Integration Tests', () => {
+        let originalClipboard: any;
+        let originalWindow: any;
+
+        setup(() => {
+            // Store original APIs
+            originalClipboard = vscode.env.clipboard;
+            originalWindow = {
+                showInformationMessage: vscode.window.showInformationMessage,
+                showErrorMessage: vscode.window.showErrorMessage,
+                showWarningMessage: vscode.window.showWarningMessage,
+                showSaveDialog: vscode.window.showSaveDialog
+            };
+        });
+
+        teardown(() => {
+            // Restore original APIs
+            if (originalClipboard) {
+                (vscode.env as any).clipboard = originalClipboard;
+            }
+            if (originalWindow) {
+                (vscode.window as any).showInformationMessage = originalWindow.showInformationMessage;
+                (vscode.window as any).showErrorMessage = originalWindow.showErrorMessage;
+                (vscode.window as any).showWarningMessage = originalWindow.showWarningMessage;
+                (vscode.window as any).showSaveDialog = originalWindow.showSaveDialog;
+            }
+        });
+
+        test('Should integrate clipboard export with generateAndExport workflow', async () => {
+            let clipboardContent = '';
+            let informationMessage = '';
+
+            // Mock clipboard API
+            (vscode.env as any).clipboard = {
+                writeText: async (text: string) => {
+                    clipboardContent = text;
+                    return Promise.resolve();
+                }
+            };
+
+            // Mock window API
+            (vscode.window as any).showInformationMessage = (message: string) => {
+                informationMessage = message;
+                return Promise.resolve();
+            };
+
+            const config: ExportConfiguration = {
+                format: 'md',
+                outputMethod: 'clipboard',
+                includeDirectoryStructure: true,
+                maxFileSize: 1024 * 1024,
+                excludePatterns: [],
+                includePatterns: [],
+                truncateThreshold: 10 * 1024 * 1024
+            };
+
+            // Use mock file tree service for integration test
+            const mockFileTreeService = {
+                isBinaryFile: () => false,
+                isDirectory: async () => false,
+                getFileStats: async () => ({ size: 1000, modified: new Date() }),
+                getFileContent: async (path: string) => `// Mock content for ${path}`
+            } as any;
+
+            const testExportService = new ExportService(mockFileTreeService);
+            const selectedPaths = ['src/test.ts'];
+            
+            const result = await testExportService.generateAndExport(selectedPaths, config);
+
+            assert.strictEqual(result.clipboardResult?.success, true);
+            assert.ok(clipboardContent.includes('# LLM Context Export'));
+            assert.ok(clipboardContent.includes('## File: src/test.ts'));
+            assert.strictEqual(informationMessage, 'Content copied to clipboard successfully!');
+        });
+
+        test('Should handle clipboard failure in integration workflow', async () => {
+            let errorMessage = '';
+            let saveDialogCalled = false;
+
+            // Mock failing clipboard API
+            (vscode.env as any).clipboard = {
+                writeText: async () => {
+                    throw new Error('Clipboard access denied');
+                }
+            };
+
+            // Mock window APIs
+            (vscode.window as any).showErrorMessage = (message: string, ...items: string[]) => {
+                errorMessage = message;
+                return Promise.resolve('Save as File');
+            };
+
+            (vscode.window as any).showSaveDialog = () => {
+                saveDialogCalled = true;
+                return Promise.resolve(vscode.Uri.file('/test/export.txt'));
+            };
+
+            // Mock workspace.fs.writeFile
+            const originalWriteFile = vscode.workspace.fs.writeFile;
+            (vscode.workspace.fs as any).writeFile = async () => Promise.resolve();
+
+            const config: ExportConfiguration = {
+                format: 'txt',
+                outputMethod: 'clipboard',
+                includeDirectoryStructure: false,
+                maxFileSize: 1024 * 1024,
+                excludePatterns: [],
+                includePatterns: [],
+                truncateThreshold: 10 * 1024 * 1024
+            };
+
+            // Use mock file tree service
+            const mockFileTreeService = {
+                isBinaryFile: () => false,
+                isDirectory: async () => false,
+                getFileStats: async () => ({ size: 1000, modified: new Date() }),
+                getFileContent: async (path: string) => `// Mock content for ${path}`
+            } as any;
+
+            const testExportService = new ExportService(mockFileTreeService);
+            const selectedPaths = ['src/test.ts'];
+            
+            const result = await testExportService.generateAndExport(selectedPaths, config);
+
+            assert.strictEqual(result.clipboardResult?.success, true);
+            assert.strictEqual(result.clipboardResult?.fallbackUsed, true);
+            assert.ok(errorMessage.includes('Failed to copy to clipboard'));
+            assert.strictEqual(saveDialogCalled, true);
+
+            // Restore original writeFile
+            (vscode.workspace.fs as any).writeFile = originalWriteFile;
+        });
+
+        test('Should handle clipboard progress tracking in integration', async () => {
+            let progressUpdates: Array<{ progress: number; message: string }> = [];
+            let clipboardContent = '';
+
+            // Mock clipboard API
+            (vscode.env as any).clipboard = {
+                writeText: async (text: string) => {
+                    clipboardContent = text;
+                    return Promise.resolve();
+                }
+            };
+
+            (vscode.window as any).showInformationMessage = () => Promise.resolve();
+
+            const config: ExportConfiguration = {
+                format: 'md',
+                outputMethod: 'clipboard',
+                includeDirectoryStructure: true,
+                maxFileSize: 1024 * 1024,
+                excludePatterns: [],
+                includePatterns: [],
+                truncateThreshold: 10 * 1024 * 1024
+            };
+
+            const progressCallback = (progress: number, message: string) => {
+                progressUpdates.push({ progress, message });
+            };
+
+            // Use mock file tree service
+            const mockFileTreeService = {
+                isBinaryFile: () => false,
+                isDirectory: async () => false,
+                getFileStats: async () => ({ size: 1000, modified: new Date() }),
+                getFileContent: async (path: string) => `// Mock content for ${path}`
+            } as any;
+
+            const testExportService = new ExportService(mockFileTreeService);
+            const selectedPaths = ['src/test.ts'];
+            
+            const result = await testExportService.generateAndExport(selectedPaths, config, progressCallback);
+
+            assert.strictEqual(result.clipboardResult?.success, true);
+            assert.ok(clipboardContent.length > 0);
+            
+            // Verify clipboard-specific progress messages
+            assert.ok(progressUpdates.some(update => update.message.includes('Copying to clipboard')));
+            assert.ok(progressUpdates.some(update => update.progress >= 95)); // Clipboard progress starts at 95%
+        });
     });
 });

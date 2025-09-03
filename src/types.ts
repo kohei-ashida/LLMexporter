@@ -17,6 +17,7 @@ export interface FileTreeNode {
 
 export interface ExportConfiguration {
     format: 'txt' | 'md';
+    outputMethod: 'file' | 'clipboard';
     includeDirectoryStructure: boolean;
     maxFileSize: number;
     excludePatterns: string[];
@@ -81,7 +82,8 @@ export interface ExportCompleteMessage extends WebviewMessage {
     type: 'exportComplete';
     payload: {
         result: ExportResult;
-        filePath: string;
+        filePath?: string;
+        clipboardSuccess?: boolean;
     };
 }
 

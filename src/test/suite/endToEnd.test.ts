@@ -1,4 +1,5 @@
 import * as assert from 'assert';
+import * as vscode from 'vscode';
 import { ExportService } from '../../services/ExportService';
 import { ExportConfiguration } from '../../types';
 import { createMockFileTreeService, mockExportConfiguration } from '../fixtures/mockData';
@@ -175,5 +176,278 @@ suite('End-to-End Test Suite', () => {
         // Check that messages are meaningful
         assert.ok(progressUpdates.some(update => update.message.includes('structure')));
         assert.ok(progressUpdates.some(update => update.message.includes('complete')));
+    });
+
+    suite('Clipboard End-to-End Tests', () => {
+        let originalClipboard: any;
+        let originalWindow: any;
+
+        setup(() => {
+            // Store original APIs
+            originalClipboard = vscode.env.clipboard;
+            originalWindow = {
+                showInformationMessage: vscode.window.showInformationMessage,
+                showErrorMessage: vscode.window.showErrorMessage,
+                showWarningMessage: vscode.window.showWarningMessage,
+                showSaveDialog: vscode.window.showSaveDialog
+            };
+        });
+
+        teardown(() => {
+            // Restore original APIs
+            if (originalClipboard) {
+                (vscode.env as any).clipboard = originalClipboard;
+            }
+            if (originalWindow) {
+                (vscode.window as any).showInformationMessage = originalWindow.showInformationMessage;
+                (vscode.window as any).showErrorMessage = originalWindow.showErrorMessage;
+                (vscode.window as any).showWarningMessage = originalWindow.showWarningMessage;
+                (vscode.window as any).showSaveDialog = originalWindow.showSaveDialog;
+            }
+        });
+
+        test('Complete clipboard export workflow with markdown format', async () => {
+            let clipboardContent = '';
+            let informationMessage = '';
+
+            // Mock clipboard API
+            (vscode.env as any).clipboard = {
+                writeText: async (text: string) => {
+                    clipboardContent = text;
+                    return Promise.resolve();
+                }
+            };
+
+            (vscode.window as any).showInformationMessage = (message: string) => {
+                informationMessage = message;
+                return Promise.resolve();
+            };
+
+            const selectedPaths = ['src/main.ts', 'src/utils.ts', 'README.md'];
+            const config: ExportConfiguration = {
+                ...mockExportConfiguration,
+                outputMethod: 'clipboard',
+                format: 'md',
+                includeDirectoryStructure: true
+            };
+
+            let progressUpdates: Array<{ progress: number; message: string }> = [];
+            const progressCallback = (progress: number, message: string) => {
+                progressUpdates.push({ progress, message });
+            };
+
+            const result = await exportService.generateAndExport(selectedPaths, config, progressCallback);
+
+            // Verify clipboard result
+            assert.strictEqual(result.clipboardResult?.success, true);
+            assert.strictEqual(result.clipboardResult?.error, undefined);
+            assert.strictEqual(result.clipboardResult?.fallbackUsed, undefined);
+
+            // Verify clipboard content
+            assert.ok(clipboardContent.includes('# LLM Context Export'));
+            assert.ok(clipboardContent.includes('## Directory Structure'));
+            assert.ok(clipboardContent.includes('## File: src/main.ts'));
+            assert.ok(clipboardContent.includes('```typescript'));
+            assert.ok(clipboardContent.includes('## Export Summary'));
+
+            // Verify success message
+            assert.strictEqual(informationMessage, 'Content copied to clipboard successfully!');
+
+            // Verify clipboard-specific progress updates
+            assert.ok(progressUpdates.some(update => update.message.includes('Copying to clipboard')));
+            assert.ok(progressUpdates.some(update => update.progress >= 95));
+        });
+
+        test('Complete clipboard export workflow with text format', async () => {
+            let clipboardContent = '';
+
+            // Mock clipboard API
+            (vscode.env as any).clipboard = {
+                writeText: async (text: string) => {
+                    clipboardContent = text;
+                    return Promise.resolve();
+                }
+            };
+
+            (vscode.window as any).showInformationMessage = () => Promise.resolve();
+
+            const selectedPaths = ['src/main.ts', 'package.json'];
+            const config: ExportConfiguration = {
+                ...mockExportConfiguration,
+                outputMethod: 'clipboard',
+                format: 'txt',
+                includeDirectoryStructure: false
+            };
+
+            const result = await exportService.generateAndExport(selectedPaths, config);
+
+            // Verify clipboard result
+            assert.strictEqual(result.clipboardResult?.success, true);
+
+            // Verify text format in clipboard
+            assert.ok(clipboardContent.includes('LLM Context Export'));
+            assert.ok(!clipboardContent.includes('# LLM Context Export')); // No markdown headers
+            assert.ok(!clipboardContent.includes('## Directory Structure')); // Structure disabled
+            assert.ok(clipboardContent.includes('File: src/main.ts'));
+            assert.ok(!clipboardContent.includes('```')); // No code blocks
+            assert.ok(clipboardContent.includes('Export Summary:'));
+        });
+
+        test('Handle clipboard failure with file save fallback', async () => {
+            let errorMessage = '';
+            let saveDialogOptions: any;
+            let savedContent = '';
+
+            // Mock failing clipboard API
+            (vscode.env as any).clipboard = {
+                writeText: async () => {
+                    throw new Error('Clipboard access denied');
+                }
+            };
+
+            (vscode.window as any).showErrorMessage = (message: string, ...items: string[]) => {
+                errorMessage = message;
+                return Promise.resolve('Save as File');
+            };
+
+            (vscode.window as any).showSaveDialog = (options: any) => {
+                saveDialogOptions = options;
+                return Promise.resolve(vscode.Uri.file('/test/export.txt'));
+            };
+
+            // Mock workspace.fs.writeFile
+            const originalWriteFile = vscode.workspace.fs.writeFile;
+            (vscode.workspace.fs as any).writeFile = async (uri: vscode.Uri, content: Uint8Array) => {
+                savedContent = Buffer.from(content).toString('utf8');
+                return Promise.resolve();
+            };
+
+            (vscode.window as any).showInformationMessage = () => Promise.resolve();
+
+            const selectedPaths = ['src/main.ts'];
+            const config: ExportConfiguration = {
+                ...mockExportConfiguration,
+                outputMethod: 'clipboard',
+                format: 'md'
+            };
+
+            const result = await exportService.generateAndExport(selectedPaths, config);
+
+            // Verify fallback was used
+            assert.strictEqual(result.clipboardResult?.success, true);
+            assert.strictEqual(result.clipboardResult?.fallbackUsed, true);
+
+            // Verify error handling
+            assert.ok(errorMessage.includes('Failed to copy to clipboard'));
+
+            // Verify save dialog was called with correct options
+            assert.ok(saveDialogOptions);
+            assert.ok(saveDialogOptions.filters);
+            assert.ok(saveDialogOptions.filters['Text Files']);
+
+            // Verify content was saved
+            assert.ok(savedContent.includes('# LLM Context Export'));
+            assert.ok(savedContent.includes('## File: src/main.ts'));
+
+            // Restore original writeFile
+            (vscode.workspace.fs as any).writeFile = originalWriteFile;
+        });
+
+        test('Handle large content with truncation fallback', async () => {
+            let clipboardAttempts = 0;
+            let warningMessage = '';
+            let finalClipboardContent = '';
+
+            // Mock clipboard API that fails on first attempt but succeeds on second
+            (vscode.env as any).clipboard = {
+                writeText: async (text: string) => {
+                    clipboardAttempts++;
+                    if (clipboardAttempts === 1) {
+                        throw new Error('Content too large');
+                    } else {
+                        finalClipboardContent = text;
+                        return Promise.resolve();
+                    }
+                }
+            };
+
+            (vscode.window as any).showWarningMessage = (message: string) => {
+                warningMessage = message;
+                return Promise.resolve();
+            };
+
+            (vscode.window as any).showInformationMessage = () => Promise.resolve();
+
+            // Create config that will generate large content
+            const selectedPaths = ['large-file.txt'];
+            const config: ExportConfiguration = {
+                ...mockExportConfiguration,
+                outputMethod: 'clipboard',
+                format: 'md',
+                maxFileSize: 10 * 1024 * 1024 // Allow large files
+            };
+
+            const result = await exportService.generateAndExport(selectedPaths, config);
+
+            // Verify fallback was used
+            assert.strictEqual(result.clipboardResult?.success, true);
+            assert.strictEqual(result.clipboardResult?.fallbackUsed, true);
+
+            // Verify truncation occurred
+            assert.strictEqual(clipboardAttempts, 2);
+            assert.ok(warningMessage.includes('Content was truncated and copied to clipboard'));
+            assert.ok(finalClipboardContent.includes('[... Content truncated for clipboard compatibility ...]'));
+        });
+
+        test('Handle user cancellation of large content warning', async () => {
+            (vscode.window as any).showWarningMessage = (message: string, ...items: string[]) => {
+                return Promise.resolve('Cancel');
+            };
+
+            // Create large content to trigger warning
+            const selectedPaths = ['large-file.txt'];
+            const config: ExportConfiguration = {
+                ...mockExportConfiguration,
+                outputMethod: 'clipboard',
+                format: 'md',
+                maxFileSize: 10 * 1024 * 1024 // Allow large files to reach clipboard stage
+            };
+
+            const result = await exportService.generateAndExport(selectedPaths, config);
+
+            // Verify operation was cancelled
+            assert.strictEqual(result.clipboardResult?.success, false);
+            assert.strictEqual(result.clipboardResult?.error, 'Operation cancelled by user');
+        });
+
+        test('Handle complete clipboard failure scenario', async () => {
+            let errorMessage = '';
+
+            // Mock completely failing clipboard API
+            (vscode.env as any).clipboard = {
+                writeText: async () => {
+                    throw new Error('Clipboard not available');
+                }
+            };
+
+            (vscode.window as any).showErrorMessage = (message: string, ...items: string[]) => {
+                errorMessage = message;
+                return Promise.resolve('Cancel'); // User cancels file save
+            };
+
+            const selectedPaths = ['src/main.ts'];
+            const config: ExportConfiguration = {
+                ...mockExportConfiguration,
+                outputMethod: 'clipboard',
+                format: 'md'
+            };
+
+            const result = await exportService.generateAndExport(selectedPaths, config);
+
+            // Verify complete failure
+            assert.strictEqual(result.clipboardResult?.success, false);
+            assert.ok(result.clipboardResult?.error?.includes('Clipboard operation failed'));
+            assert.ok(errorMessage.includes('Failed to copy to clipboard'));
+        });
     });
 });

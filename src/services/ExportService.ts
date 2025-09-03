@@ -2,6 +2,7 @@
  * Service for generating formatted export files from selected content
  */
 
+import * as vscode from 'vscode';
 import * as path from 'path';
 import { ExportConfiguration, ExportResult, FileTreeNode } from '../types';
 import { FileTreeService } from './FileTreeService';
@@ -11,6 +12,38 @@ export class ExportService {
 
     constructor(fileTreeService: FileTreeService) {
         this.fileTreeService = fileTreeService;
+    }
+
+    /**
+     * Generate and export content based on configuration (file or clipboard)
+     */
+    async generateAndExport(
+        selectedPaths: string[],
+        configuration: ExportConfiguration,
+        progressCallback?: (progress: number, message: string) => void
+    ): Promise<ExportResult & { clipboardResult?: { success: boolean; error?: string; fallbackUsed?: boolean } }> {
+        // Generate the export content
+        const exportResult = await this.generateExport(selectedPaths, configuration, progressCallback);
+        
+        // If clipboard output is requested, copy to clipboard
+        if (configuration.outputMethod === 'clipboard') {
+            progressCallback?.(95, 'Copying to clipboard...');
+            const clipboardResult = await this.copyToClipboardWithProgress(
+                exportResult.content,
+                (progress, message) => {
+                    // Adjust progress to fit within the remaining 5%
+                    const adjustedProgress = 95 + (progress * 0.05);
+                    progressCallback?.(adjustedProgress, message);
+                }
+            );
+            
+            return {
+                ...exportResult,
+                clipboardResult
+            };
+        }
+        
+        return exportResult;
     }
 
     /**
@@ -369,6 +402,107 @@ ${'='.repeat(50)}
     }
 
 
+
+    /**
+     * Copy formatted content to system clipboard with error handling and fallback mechanisms
+     */
+    async copyToClipboard(content: string): Promise<{ success: boolean; error?: string; fallbackUsed?: boolean }> {
+        try {
+            // First attempt: Use VSCode's clipboard API
+            await vscode.env.clipboard.writeText(content);
+            
+            // Show visual confirmation
+            vscode.window.showInformationMessage('Content copied to clipboard successfully!');
+            
+            return { success: true };
+        } catch (primaryError) {
+            console.error('Primary clipboard operation failed:', primaryError);
+            
+            // Fallback mechanism 1: Try with smaller chunks if content is too large
+            if (content.length > 1024 * 1024) { // 1MB threshold
+                try {
+                    // Truncate content and try again
+                    const truncatedContent = content.substring(0, 1024 * 1024) + '\n\n[... Content truncated for clipboard compatibility ...]';
+                    await vscode.env.clipboard.writeText(truncatedContent);
+                    
+                    vscode.window.showWarningMessage('Content was truncated and copied to clipboard due to size limitations.');
+                    
+                    return { success: true, fallbackUsed: true };
+                } catch (fallbackError) {
+                    console.error('Fallback clipboard operation failed:', fallbackError);
+                }
+            }
+            
+            // Fallback mechanism 2: Offer to save as file instead
+            const errorMessage = primaryError instanceof Error ? primaryError.message : 'Unknown clipboard error';
+            const fallbackAction = await vscode.window.showErrorMessage(
+                `Failed to copy to clipboard: ${errorMessage}. Would you like to save as a file instead?`,
+                'Save as File',
+                'Cancel'
+            );
+            
+            if (fallbackAction === 'Save as File') {
+                try {
+                    const saveUri = await vscode.window.showSaveDialog({
+                        defaultUri: vscode.Uri.file('llm-context-export.txt'),
+                        filters: {
+                            'Text Files': ['txt'],
+                            'Markdown Files': ['md'],
+                            'All Files': ['*']
+                        }
+                    });
+                    
+                    if (saveUri) {
+                        await vscode.workspace.fs.writeFile(saveUri, Buffer.from(content, 'utf8'));
+                        vscode.window.showInformationMessage(`Content saved to ${saveUri.fsPath}`);
+                        return { success: true, fallbackUsed: true };
+                    }
+                } catch (saveError) {
+                    console.error('File save fallback failed:', saveError);
+                    const saveErrorMessage = saveError instanceof Error ? saveError.message : 'Unknown save error';
+                    vscode.window.showErrorMessage(`Failed to save file: ${saveErrorMessage}`);
+                }
+            }
+            
+            // All fallbacks failed
+            return { 
+                success: false, 
+                error: `Clipboard operation failed: ${errorMessage}` 
+            };
+        }
+    }
+
+    /**
+     * Copy formatted content to clipboard with progress tracking
+     */
+    async copyToClipboardWithProgress(
+        content: string,
+        progressCallback?: (progress: number, message: string) => void
+    ): Promise<{ success: boolean; error?: string; fallbackUsed?: boolean }> {
+        progressCallback?.(0, 'Preparing clipboard operation...');
+        
+        // Check content size and warn user if it's very large
+        const sizeInMB = content.length / (1024 * 1024);
+        if (sizeInMB > 10) {
+            const proceed = await vscode.window.showWarningMessage(
+                `The content is ${sizeInMB.toFixed(1)}MB. Large clipboard operations may be slow or fail. Continue?`,
+                'Continue',
+                'Cancel'
+            );
+            
+            if (proceed !== 'Continue') {
+                return { success: false, error: 'Operation cancelled by user' };
+            }
+        }
+        
+        progressCallback?.(50, 'Copying to clipboard...');
+        
+        const result = await this.copyToClipboard(content);
+        
+        progressCallback?.(100, result.success ? 'Copied successfully!' : 'Copy failed');
+        
+        return result;
+    }
 
     /**
      * Get language identifier from file extension for syntax highlighting

@@ -95,6 +95,21 @@
                             </div>
                         </div>
                         <div class="config-row">
+                            <label class="config-label">Output:</label>
+                            <div class="config-input">
+                                <div class="radio-group">
+                                    <label class="radio-option">
+                                        <input type="radio" name="output-method" value="file" checked>
+                                        <span class="radio-label">Save to file</span>
+                                    </label>
+                                    <label class="radio-option">
+                                        <input type="radio" name="output-method" value="clipboard">
+                                        <span class="radio-label">Copy to clipboard</span>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="config-row">
                             <label class="config-label">
                                 <input type="checkbox" id="include-structure" checked> 
                                 Include directory structure
@@ -126,6 +141,11 @@
                     <button id="export-button" class="export-button" disabled>
                         Generate Export
                     </button>
+                    <div id="clipboard-notification" class="clipboard-notification" style="display: none;">
+                        <div class="notification-content">
+                            <span id="notification-message"></span>
+                        </div>
+                    </div>
                 </div>
 
                 <div id="progress-section" class="progress-section" style="display: none;">
@@ -154,6 +174,11 @@
         document.getElementById('max-file-size').addEventListener('input', handleConfigurationChange);
         document.getElementById('exclude-patterns').addEventListener('input', handleConfigurationChange);
         document.getElementById('include-patterns').addEventListener('input', handleConfigurationChange);
+        
+        // Add output method change listeners
+        document.querySelectorAll('input[name="output-method"]').forEach(radio => {
+            radio.addEventListener('change', handleOutputMethodChange);
+        });
     }
 
     function requestWorkspaceTree() {
@@ -629,14 +654,34 @@
 
         // Reset preset selection to "Custom"
         document.getElementById('preset-select').value = '';
+        
+        // Update export button text based on output method
+        updateExportButtonText();
+    }
+
+    function handleOutputMethodChange() {
+        handleConfigurationChange();
+    }
+
+    function updateExportButtonText() {
+        const outputMethod = document.querySelector('input[name="output-method"]:checked').value;
+        const exportButton = document.getElementById('export-button');
+        
+        if (outputMethod === 'clipboard') {
+            exportButton.textContent = 'Copy to Clipboard';
+        } else {
+            exportButton.textContent = 'Generate Export';
+        }
     }
 
     function getCurrentConfiguration() {
         const excludePatternsText = document.getElementById('exclude-patterns').value.trim();
         const includePatternsText = document.getElementById('include-patterns').value.trim();
+        const outputMethod = document.querySelector('input[name="output-method"]:checked').value;
 
         return {
             format: document.getElementById('format-select').value,
+            outputMethod: outputMethod,
             includeDirectoryStructure: document.getElementById('include-structure').checked,
             maxFileSize: parseInt(document.getElementById('max-file-size').value) * 1024, // Convert KB to bytes
             excludePatterns: excludePatternsText ? excludePatternsText.split('\n').map(p => p.trim()).filter(p => p) : [],
@@ -651,6 +696,13 @@
         document.getElementById('max-file-size').value = Math.round((configuration.maxFileSize || 1024 * 1024) / 1024);
         document.getElementById('exclude-patterns').value = (configuration.excludePatterns || []).join('\n');
         document.getElementById('include-patterns').value = (configuration.includePatterns || []).join('\n');
+        
+        // Update output method radio buttons
+        const outputMethod = configuration.outputMethod || 'file';
+        document.querySelector(`input[name="output-method"][value="${outputMethod}"]`).checked = true;
+        
+        // Update export button text
+        updateExportButtonText();
     }
 
     function handleExportClick() {
@@ -679,14 +731,37 @@
     }
 
     function handleExportComplete(payload) {
-        const { result, filePath } = payload;
+        const { result, filePath, clipboardSuccess } = payload;
 
         isExporting = false;
         updateExportButton();
         progressSection.style.display = 'none';
 
-        // Show success message
-        showMessage(`Export completed successfully! ${result.metadata.totalFiles} files exported.`, 'success');
+        if (clipboardSuccess !== undefined) {
+            // Clipboard export
+            if (clipboardSuccess) {
+                showClipboardNotification(`Successfully copied ${result.metadata.totalFiles} files to clipboard!`, 'success');
+            } else {
+                showClipboardNotification('Failed to copy content to clipboard', 'error');
+            }
+        } else {
+            // File export
+            showMessage(`Export completed successfully! ${result.metadata.totalFiles} files exported.`, 'success');
+        }
+    }
+
+    function showClipboardNotification(message, type = 'success') {
+        const notification = document.getElementById('clipboard-notification');
+        const messageElement = document.getElementById('notification-message');
+        
+        messageElement.textContent = message;
+        notification.className = `clipboard-notification ${type === 'error' ? 'error' : 'success'}`;
+        notification.style.display = 'block';
+
+        // Auto-hide after 3 seconds
+        setTimeout(() => {
+            notification.style.display = 'none';
+        }, 3000);
     }
 
     function handleError(payload) {

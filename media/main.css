@@ -265,6 +265,62 @@
     color: var(--vscode-button-secondaryForeground);
 }
 
+.radio-group {
+    display: flex;
+    gap: 16px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.radio-option {
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+    font-size: 13px;
+}
+
+.radio-option input[type="radio"] {
+    margin-right: 6px;
+    cursor: pointer;
+}
+
+.radio-label {
+    cursor: pointer;
+    color: var(--vscode-foreground);
+}
+
+.clipboard-notification {
+    margin-top: 12px;
+    padding: 8px 12px;
+    border-radius: 4px;
+    font-size: 13px;
+    text-align: center;
+    animation: slideIn 0.3s ease-out;
+}
+
+.clipboard-notification.success {
+    background: var(--vscode-inputValidation-infoBackground);
+    border: 1px solid var(--vscode-inputValidation-infoBorder);
+    color: var(--vscode-inputValidation-infoForeground);
+}
+
+.clipboard-notification.error {
+    background: var(--vscode-inputValidation-errorBackground);
+    border: 1px solid var(--vscode-inputValidation-errorBorder);
+    color: var(--vscode-inputValidation-errorForeground);
+}
+
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
 .progress-section {
     margin-top: 16px;
     padding: 16px;

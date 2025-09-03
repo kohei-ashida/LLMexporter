@@ -29,6 +29,8 @@ This feature is a VSCode extension that allows users to generate attachment file
 3. WHEN including source files THEN the system SHALL format each file with clear headers showing the file path
 4. WHEN processing files THEN the system SHALL preserve original formatting and syntax
 5. WHEN the file is generated THEN the system SHALL save it to a user-specified location or default location
+6. WHEN the user chooses clipboard output THEN the system SHALL copy the formatted content directly to the system clipboard
+7. WHEN copying to clipboard THEN the system SHALL provide visual confirmation that the content has been copied successfully
 
 ### Requirement 3
 
@@ -37,10 +39,11 @@ This feature is a VSCode extension that allows users to generate attachment file
 #### Acceptance Criteria
 
 1. WHEN configuring output THEN the system SHALL allow users to choose between different file formats (txt, md)
-2. WHEN selecting files THEN the system SHALL provide filtering options by file extension or patterns
-3. WHEN generating output THEN the system SHALL allow users to exclude certain file types (e.g., binary files, logs)
-4. WHEN processing large files THEN the system SHALL provide options to truncate or summarize content
-5. IF the total content exceeds a threshold THEN the system SHALL warn the user and suggest optimization options
+2. WHEN configuring output THEN the system SHALL allow users to choose between file export and clipboard copy as output methods
+3. WHEN selecting files THEN the system SHALL provide filtering options by file extension or patterns
+4. WHEN generating output THEN the system SHALL allow users to exclude certain file types (e.g., binary files, logs)
+5. WHEN processing large files THEN the system SHALL provide options to truncate or summarize content
+6. IF the total content exceeds a threshold THEN the system SHALL warn the user and suggest optimization options
 
 ### Requirement 4
 

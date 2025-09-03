@@ -102,6 +102,7 @@ suite('ConfigurationService Tests', () => {
             selectedPaths: ['/test/file1.ts', '/test/file2.js'],
             lastConfiguration: {
                 format: 'md',
+                outputMethod: 'file',
                 includeDirectoryStructure: true,
                 maxFileSize: 1024 * 1024,
                 excludePatterns: ['node_modules/**'],
@@ -143,6 +144,7 @@ suite('ConfigurationService Tests', () => {
     test('should generate configuration summary', () => {
         const config: ExportConfiguration = {
             format: 'md',
+            outputMethod: 'file',
             includeDirectoryStructure: true,
             maxFileSize: 2048 * 1024, // 2MB
             excludePatterns: ['node_modules/**', '*.log'],

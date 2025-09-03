@@ -19,6 +19,11 @@ export function validateExportConfiguration(config: Partial<ExportConfiguration>
         errors.push('Format must be either "txt" or "md"');
     }
 
+    // Validate outputMethod
+    if (!config.outputMethod || !['file', 'clipboard'].includes(config.outputMethod)) {
+        errors.push('Output method must be either "file" or "clipboard"');
+    }
+
     // Validate maxFileSize
     if (config.maxFileSize !== undefined) {
         if (typeof config.maxFileSize !== 'number' || config.maxFileSize <= 0) {
@@ -49,6 +54,7 @@ export function validateExportConfiguration(config: Partial<ExportConfiguration>
     // Return validated configuration with defaults
     return {
         format: config.format || 'txt',
+        outputMethod: config.outputMethod || 'file',
         includeDirectoryStructure: config.includeDirectoryStructure ?? true,
         maxFileSize: config.maxFileSize || 1024 * 1024, // 1MB default
         excludePatterns: config.excludePatterns || [],

@@ -217,8 +217,8 @@ export class WebviewProvider implements vscode.WebviewViewProvider {
                 return;
             }
 
-            // Generate export with progress updates
-            const result = await this.exportService.generateExport(
+            // Generate and export content based on configuration
+            const result = await this.exportService.generateAndExport(
                 Array.from(this.selectedPaths),
                 validConfig,
                 (progress, message) => {
@@ -226,32 +226,48 @@ export class WebviewProvider implements vscode.WebviewViewProvider {
                 }
             );
 
-            // Save the file
-            const defaultFileName = `llm-context-export-${new Date().toISOString().split('T')[0]}.${validConfig.format}`;
-            const saveUri = await vscode.window.showSaveDialog({
-                defaultUri: vscode.Uri.file(defaultFileName),
-                filters: validConfig.format === 'md'
-                    ? { 'Markdown': ['md'] }
-                    : { 'Text': ['txt'] }
-            });
+            if (validConfig.outputMethod === 'clipboard') {
+                // Handle clipboard export result
+                const clipboardResult = result.clipboardResult;
+                
+                this.sendExportComplete(result, undefined, clipboardResult?.success);
 
-            if (saveUri) {
-                await vscode.workspace.fs.writeFile(saveUri, Buffer.from(result.content, 'utf8'));
-
-                this.sendExportComplete(result, saveUri.fsPath);
-
-                // Show success message
-                const openAction = 'Open File';
-                const choice = await vscode.window.showInformationMessage(
-                    `Export completed successfully! ${result.metadata.totalFiles} files exported to ${path.basename(saveUri.fsPath)}`,
-                    openAction
-                );
-
-                if (choice === openAction) {
-                    await vscode.window.showTextDocument(saveUri);
+                if (clipboardResult?.success) {
+                    const successMessage = clipboardResult.fallbackUsed 
+                        ? `Export completed with fallback! ${result.metadata.totalFiles} files processed.`
+                        : `Export completed successfully! ${result.metadata.totalFiles} files copied to clipboard.`;
+                    vscode.window.showInformationMessage(successMessage);
+                } else {
+                    this.sendError(clipboardResult?.error || 'Failed to copy content to clipboard');
                 }
             } else {
-                this.sendError('Export cancelled by user');
+                // Save the file
+                const defaultFileName = `llm-context-export-${new Date().toISOString().split('T')[0]}.${validConfig.format}`;
+                const saveUri = await vscode.window.showSaveDialog({
+                    defaultUri: vscode.Uri.file(defaultFileName),
+                    filters: validConfig.format === 'md'
+                        ? { 'Markdown': ['md'] }
+                        : { 'Text': ['txt'] }
+                });
+
+                if (saveUri) {
+                    await vscode.workspace.fs.writeFile(saveUri, Buffer.from(result.content, 'utf8'));
+
+                    this.sendExportComplete(result, saveUri.fsPath);
+
+                    // Show success message
+                    const openAction = 'Open File';
+                    const choice = await vscode.window.showInformationMessage(
+                        `Export completed successfully! ${result.metadata.totalFiles} files exported to ${path.basename(saveUri.fsPath)}`,
+                        openAction
+                    );
+
+                    if (choice === openAction) {
+                        await vscode.window.showTextDocument(saveUri);
+                    }
+                } else {
+                    this.sendError('Export cancelled by user');
+                }
             }
         } catch (error) {
             if (error instanceof ValidationError) {
@@ -326,12 +342,13 @@ export class WebviewProvider implements vscode.WebviewViewProvider {
         this._view?.webview.postMessage(progressMessage);
     }
 
-    private sendExportComplete(result: any, filePath: string) {
+    private sendExportComplete(result: any, filePath?: string, clipboardSuccess?: boolean) {
         const completeMessage: ExportCompleteMessage = {
             type: 'exportComplete',
             payload: {
                 result,
-                filePath
+                filePath,
+                clipboardSuccess
             }
         };
 
