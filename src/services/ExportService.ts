@@ -453,7 +453,12 @@ ${'='.repeat(50)}
                     });
                     
                     if (saveUri) {
-                        await vscode.workspace.fs.writeFile(saveUri, Buffer.from(content, 'utf8'));
+                        // Add UTF-8 BOM to prevent encoding issues
+                        const utf8BOM = Buffer.from([0xEF, 0xBB, 0xBF]);
+                        const contentBuffer = Buffer.from(content, 'utf8');
+                        const finalBuffer = Buffer.concat([utf8BOM, contentBuffer]);
+                        
+                        await vscode.workspace.fs.writeFile(saveUri, finalBuffer);
                         vscode.window.showInformationMessage(`Content saved to ${saveUri.fsPath}`);
                         return { success: true, fallbackUsed: true };
                     }

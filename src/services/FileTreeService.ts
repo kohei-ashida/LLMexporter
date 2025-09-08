@@ -334,11 +334,75 @@ export class FileTreeService {
             const fileUri = vscode.Uri.joinPath(workspaceFolder.uri, sanitizedPath);
             const content = await vscode.workspace.fs.readFile(fileUri);
 
-            // Convert Uint8Array to string
-            return Buffer.from(content).toString('utf8');
+            // Convert Uint8Array to string with encoding detection
+            return this.decodeFileContent(content);
         } catch (error) {
             throw ErrorHandler.createFileSystemError('read', filePath, error as Error);
         }
+    }
+
+    /**
+     * Decode file content with encoding detection
+     */
+    private decodeFileContent(content: Uint8Array): string {
+        const buffer = Buffer.from(content);
+        
+        // Check for BOM (Byte Order Mark)
+        if (buffer.length >= 3 && buffer[0] === 0xEF && buffer[1] === 0xBB && buffer[2] === 0xBF) {
+            // UTF-8 with BOM
+            return buffer.slice(3).toString('utf8');
+        }
+        
+        if (buffer.length >= 2) {
+            if (buffer[0] === 0xFF && buffer[1] === 0xFE) {
+                // UTF-16 LE with BOM
+                return buffer.slice(2).toString('utf16le');
+            }
+            if (buffer[0] === 0xFE && buffer[1] === 0xFF) {
+                // UTF-16 BE with BOM
+                return buffer.slice(2).swap16().toString('utf16le');
+            }
+        }
+        
+        // Get VSCode's file encoding setting
+        const encoding = this.getVSCodeEncoding();
+        
+        try {
+            return buffer.toString(encoding);
+        } catch (error) {
+            // Try UTF-8 as fallback
+            try {
+                return buffer.toString('utf8');
+            } catch (utf8Error) {
+                // Last resort: latin1 (preserves all bytes)
+                console.warn('Failed to decode file with UTF-8, using latin1 as fallback');
+                return buffer.toString('latin1');
+            }
+        }
+    }
+
+    /**
+     * Get VSCode's file encoding setting
+     */
+    private getVSCodeEncoding(): BufferEncoding {
+        const config = vscode.workspace.getConfiguration('files');
+        const encoding = config.get<string>('encoding', 'utf8');
+        
+        // Map VSCode encoding names to Node.js encoding names
+        const encodingMap: { [key: string]: BufferEncoding } = {
+            'utf8': 'utf8',
+            'utf8bom': 'utf8',
+            'utf16le': 'utf16le',
+            'utf16be': 'utf16le', // Node.js doesn't have utf16be, we handle BOM separately
+            'windows1252': 'latin1',
+            'iso88591': 'latin1',
+            'shiftjis': 'latin1', // Fallback to latin1 for unsupported encodings
+            'eucjp': 'latin1',
+            'gb2312': 'latin1',
+            'big5': 'latin1'
+        };
+        
+        return encodingMap[encoding.toLowerCase()] || 'utf8';
     }
 
     /**

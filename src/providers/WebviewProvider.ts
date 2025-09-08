@@ -251,7 +251,12 @@ export class WebviewProvider implements vscode.WebviewViewProvider {
                 });
 
                 if (saveUri) {
-                    await vscode.workspace.fs.writeFile(saveUri, Buffer.from(result.content, 'utf8'));
+                    // Add UTF-8 BOM to prevent encoding issues
+                    const utf8BOM = Buffer.from([0xEF, 0xBB, 0xBF]);
+                    const contentBuffer = Buffer.from(result.content, 'utf8');
+                    const finalBuffer = Buffer.concat([utf8BOM, contentBuffer]);
+                    
+                    await vscode.workspace.fs.writeFile(saveUri, finalBuffer);
 
                     this.sendExportComplete(result, saveUri.fsPath);
 
@@ -380,8 +385,11 @@ export class WebviewProvider implements vscode.WebviewViewProvider {
         // Use a nonce to only allow a specific script to be run.
         const nonce = getNonce();
 
+        // Get VSCode's display language
+        const locale = vscode.env.language || 'en';
+        
         return `<!DOCTYPE html>
-            <html lang="en">
+            <html lang="${locale}">
             <head>
                 <meta charset="UTF-8">
                 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src ${webview.cspSource}; script-src 'nonce-${nonce}';">
